@@ -38,7 +38,8 @@ class OverviewService
         $heartbeatAge = $heartbeat ? max(0, time() - (int) $heartbeat['last_seen_at']) : 999999;
         $redis = ['available' => false, 'queue_length' => null];
         try {
-            $client = new \Redis(); $client->connect('127.0.0.1', 6379, 1.0);
+            $client = new \Redis();
+            $client->connect(getenv('REDIS_HOST') ?: '127.0.0.1', (int) (getenv('REDIS_PORT') ?: 6379), 1.0);
             $redis['available'] = $client->ping() !== false;
             $redis['queue_length'] = (int) $client->lLen(config('im_callback.queue_key'));
         } catch (\Throwable $e) {

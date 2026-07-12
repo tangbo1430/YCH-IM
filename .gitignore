@@ -58,3 +58,8 @@ desktop.ini
 *.log
 *.tmp
 *.bak
+
+# Assembled deployment package contents
+deployment/backend/
+deployment/frontend/
+YCH-IM-deploy.zip

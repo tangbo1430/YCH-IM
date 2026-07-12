@@ -1,0 +1,23 @@
+{
+    email {$ACME_EMAIL}
+}
+
+im.awhaha.com {
+    encode zstd gzip
+    reverse_proxy web:8080
+}
+
+admin.awhaha.com {
+    root * /srv/backend/public
+    encode zstd gzip
+    @home path /
+    redir @home /admin/
+    php_fastcgi php:9000
+    file_server
+}
+
+:8080 {
+    root * /srv/backend/public
+    php_fastcgi php:9000
+    file_server
+}
