@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>IM 回调日志</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <link rel="stylesheet" href="../../lib/layui-v2.5.5/css/layui.css">
+    <link rel="stylesheet" href="../../css/public.css">
+    <style>
+        .filters{padding-bottom:2px}.status{padding:2px 7px;border-radius:3px;font-size:12px}
+        .done,.processed{background:#f0fff4;color:#2f855a}.pending{background:#ebf8ff;color:#2b6cb0}
+        .failed{background:#fffaf0;color:#b7791f}.dead{background:#fff5f5;color:#c53030}.none,.ignored{background:#f2f3f5;color:#626b75}
+        .trace{font-family:monospace;font-size:12px}.detail{padding:16px 18px}.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+        .detail-block{border-top:1px solid #e5e9ee;padding-top:12px;margin-top:14px}.kv label{display:block;color:#77808a;font-size:12px;margin-bottom:3px}.kv div{word-break:break-all}
+        .timeline{display:flex;gap:18px;flex-wrap:wrap}.timeline span{border-left:3px solid #2b6cb0;padding-left:9px}.raw{background:#f6f7f9;border:1px solid #e2e5e9;padding:12px;white-space:pre-wrap;word-break:break-all;max-height:360px;overflow:auto}
+        .history{width:100%;border-collapse:collapse}.history th,.history td{border:1px solid #e5e9ee;padding:7px;text-align:left}
+        @media(max-width:768px){.detail-grid{grid-template-columns:1fr}.layui-inline{display:block;margin-right:0!important}.layui-inline input,.layui-inline select{width:100%}}
+    </style>
+</head>
+<body><div class="layuimini-container"><div class="layuimini-main">
+    <form class="layui-form layui-form-pane filters">
+        <div class="layui-form-item">
+            <div class="layui-inline"><input class="layui-input" name="account" placeholder="IM账号"></div>
+            <div class="layui-inline"><input class="layui-input" name="business_uid" placeholder="业务UID"></div>
+            <div class="layui-inline"><input class="layui-input" name="group_id" placeholder="群ID"></div>
+            <div class="layui-inline"><input class="layui-input" name="trace_id" placeholder="TraceID"></div>
+            <div class="layui-inline"><select name="callback_command" id="eventCatalog"><option value="">全部事件</option></select></div>
+            <div class="layui-inline"><select name="event_category"><option value="">全部类别</option><option value="message">消息</option><option value="group">群组</option><option value="relation">关系</option><option value="profile">资料</option><option value="state">状态</option><option value="unknown">未识别</option></select></div>
+            <div class="layui-inline"><select name="queue_status"><option value="">全部队列状态</option><option value="pending">待处理</option><option value="processing">处理中</option><option value="done">已完成</option><option value="failed">重试中</option><option value="dead">死信</option><option value="none">同步/忽略</option></select></div>
+            <div class="layui-inline"><input class="layui-input" name="start_date" type="date" title="开始日期"></div>
+            <div class="layui-inline"><input class="layui-input" name="end_date" type="date" title="结束日期"></div>
+            <button class="layui-btn" lay-submit lay-filter="search"><i class="layui-icon layui-icon-search"></i> 查询</button>
+            <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+    </form>
+    <table id="eventTable" lay-filter="eventTable"></table>
+</div></div>
+<script type="text/html" id="statusTpl"><span class="status {{d.queue_status}}">{{d.queue_status}}</span></script>
+<script type="text/html" id="actions"><button class="layui-btn layui-btn-xs" lay-event="detail" title="查看详情"><i class="layui-icon layui-icon-read"></i></button></script>
+<script src="../../lib/layui-v2.5.5/layui.js"></script><script src="../../common/common.js"></script>
+<script>
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,$=layui.jquery;
+    var api=location.protocol+'//'+location.host+'/index.php?s=/imcallback/admin/';
+    function esc(v){return $('<div>').text(v==null?'':String(v)).html()}
+    $.post(api+'catalog',{login_token:AdminLoginToken},function(res){
+        if(res.code!==0)return;
+        Object.keys(res.data).forEach(function(command){$('#eventCatalog').append('<option value="'+command+'">'+res.data[command]+'</option>')});
+        form.render('select');
+    },'json');
+    table.render({elem:'#eventTable',id:'eventTable',url:api+'events',method:'post',where:{login_token:AdminLoginToken,event_id:new URLSearchParams(location.search).get('event_id')||''},page:true,limit:20,cols:[[
+        {field:'id',title:'ID',width:72},{field:'event_name',title:'事件',minWidth:150},{field:'event_category',title:'类别',width:75},
+        {field:'from_account',title:'发送方 / UID',minWidth:145,templet:function(d){return esc(d.from_account)+(d.from_uid?'<br><small>UID '+d.from_uid+'</small>':'')}},
+        {field:'to_account',title:'接收方 / UID',minWidth:145,templet:function(d){return esc(d.to_account)+(d.to_uid?'<br><small>UID '+d.to_uid+'</small>':'')}},
+        {field:'group_id',title:'群ID',minWidth:120},{field:'summary',title:'内容类型',minWidth:145},{field:'queue_status',title:'队列',width:88,templet:'#statusTpl'},
+        {field:'duration_ms',title:'耗时ms',width:82},{field:'duplicate_count',title:'重复',width:65},{field:'trace_id',title:'TraceID',minWidth:220,cssClass:'trace'},
+        {field:'received_at',title:'接收时间',width:168,templet:function(d){return dateFormat(d.received_at)}},{title:'操作',toolbar:'#actions',width:60,fixed:'right'}
+    ]]});
+    form.on('submit(search)',function(data){
+        data.field.login_token=AdminLoginToken;
+        if(data.field.start_date)data.field.start_time=Math.floor(new Date(data.field.start_date+'T00:00:00').getTime()/1000);
+        if(data.field.end_date)data.field.end_time=Math.floor(new Date(data.field.end_date+'T23:59:59').getTime()/1000);
+        delete data.field.start_date;delete data.field.end_date;
+        table.reload('eventTable',{where:data.field,page:{curr:1}});return false;
+    });
+    table.on('tool(eventTable)',function(obj){if(obj.event==='detail')showDetail(obj.data.id)});
+    function showDetail(id){
+        $.post(api+'detail',{id:id,login_token:AdminLoginToken},function(res){
+            if(res.code!==0){layer.msg(res.msg);return}var d=res.data;
+            var html='<div class="detail"><div class="detail-grid"><div class="kv"><label>事件</label><div>'+esc(d.event_name)+'<br><small>'+esc(d.callback_command)+'</small></div></div><div class="kv"><label>处理状态</label><div>'+esc(d.handler_status)+' / '+esc(d.queue_status)+'</div></div><div class="kv"><label>TraceID</label><div class="trace">'+esc(d.trace_id)+'</div></div><div class="kv"><label>账号映射</label><div>'+esc(d.from_account)+' → UID '+esc(d.from_uid||'-')+'<br>'+esc(d.to_account)+' → UID '+esc(d.to_uid||'-')+'</div></div><div class="kv"><label>群组</label><div>'+esc(d.group_id||'-')+'</div></div><div class="kv"><label>处理结果</label><div>'+esc(d.error_message||'正常')+'</div></div></div>';
+            html+='<div class="detail-block"><strong>处理时间线</strong><div class="timeline" style="margin-top:10px">';(d.timeline||[]).forEach(function(x){if(x.time)html+='<span>'+esc(x.label)+'<br><small>'+dateFormat(x.time)+'</small></span>'});html+='</div></div>';
+            if(d.action_history&&d.action_history.length){html+='<div class="detail-block"><strong>管理员处置历史</strong><table class="history" style="margin-top:9px"><tr><th>操作</th><th>管理员</th><th>状态变化</th><th>时间</th></tr>';d.action_history.forEach(function(x){html+='<tr><td>'+esc(x.action)+'</td><td>'+esc(x.user_name||x.trace_id)+'</td><td>'+esc(x.before_status)+' → '+esc(x.after_status)+'</td><td>'+dateFormat(x.created_at)+'</td></tr>'});html+='</table></div>'}
+            html+='<div class="detail-block"><button class="layui-btn layui-btn-sm layui-btn-primary" id="loadRaw"><i class="layui-icon layui-icon-file"></i> 查看完整原始 JSON</button><div id="rawArea" style="display:none;margin-top:10px"></div></div></div>';
+            layer.open({type:1,title:'回调详情 #'+id,area:['82%','82%'],content:html});
+            $('#loadRaw').on('click',function(){$.post(api+'detail',{id:id,include_raw:1,login_token:AdminLoginToken},function(full){if(full.code!==0)return layer.msg(full.msg);$('#rawArea').show().html('<pre class="raw">'+esc(JSON.stringify(full.data.payload,null,2))+'</pre>');$('#loadRaw').hide()},'json')});
+        },'json');
+    }
+});
+</script></body></html>

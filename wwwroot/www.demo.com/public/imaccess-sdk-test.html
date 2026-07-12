@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>腾讯 IM 登录联调</title>
+  <style>
+    body{font-family:Arial,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;color:#202124}label{display:block;margin:16px 0 6px}input{width:100%;box-sizing:border-box;padding:10px}button{margin:16px 8px 0 0;padding:10px 18px}pre{background:#f4f5f7;padding:14px;min-height:120px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h1>腾讯 IM 登录联调</h1>
+  <label for="token">本地业务 login_token</label>
+  <input id="token" autocomplete="off">
+  <button id="login">登录腾讯 IM</button><button id="logout" disabled>退出</button>
+  <pre id="output">等待操作</pre>
+  <script type="module">
+    import TencentCloudChat from 'https://cdn.jsdelivr.net/npm/@tencentcloud/chat@3.5.0/+esm';
+    let chat;
+    const output=document.querySelector('#output');
+    const show=(value)=>output.textContent=typeof value==='string'?value:JSON.stringify(value,null,2);
+    document.querySelector('#login').onclick=async()=>{
+      try{
+        const form=new URLSearchParams({login_token:document.querySelector('#token').value});
+        const response=await fetch('/imaccess/session',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+        const result=await response.json();
+        if(!response.ok||result.code!==200) throw new Error(result.msg+' ['+(result.trace_id||'no-trace')+']');
+        chat=TencentCloudChat.create({SDKAppID:Number(result.data.sdk_app_id)});
+        await chat.login({userID:result.data.im_user_id,userSig:result.data.user_sig});
+        document.querySelector('#logout').disabled=false;
+        show({status:'login success',sdk_app_id:result.data.sdk_app_id,im_user_id:result.data.im_user_id,expires_at:result.data.expires_at});
+      }catch(error){show('登录失败: '+error.message)}
+    };
+    document.querySelector('#logout').onclick=async()=>{
+      try{await chat.logout();document.querySelector('#logout').disabled=true;show('logout success')}catch(error){show('退出失败: '+error.message)}
+    };
+  </script>
+</body>
+</html>

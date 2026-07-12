@@ -1,0 +1,60 @@
+# Local runtime and development tools
+.tools/
+LOCAL_DEV_CHANGES.md
+.env
+.env.*
+!.env.example
+
+# PHP / framework runtime output
+**/runtime/
+**/logs/
+**/log/
+**/cache/
+**/temp/
+**/upload/
+**/uploads/
+**/public/uploads/
+
+# Database exports and local business data
+**/mysql_back/
+**/msql_back/
+**/*_back/
+**/*.sql.bak
+**/*.dump
+**/*.ibd
+**/*.frm
+
+# Archives and deployment artifacts
+**/*.zip
+**/*.tar.gz
+**/*.7z
+**/*.rar
+
+# Secrets and local certificates
+**/*secret*.pem
+**/*private*.pem
+**/cacert.pem
+**/imcallback.env
+**/.htpasswd
+**/config/database.php
+**/config/database*.php
+
+# Editors and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node dependencies and build output
+**/node_modules/
+**/dist/
+**/build/
+**/.cache/
+
+# Temporary test artifacts
+*.log
+*.tmp
+*.bak
