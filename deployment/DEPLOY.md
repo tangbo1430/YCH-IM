@@ -6,13 +6,15 @@
 
 1. Cloudflare 添加 `im.awhaha.com`、`admin.awhaha.com` 的 A 记录，均指向 `23.251.34.150`。
 2. 服务器开放 TCP `80`、`443`，Cloudflare SSL/TLS 设置为 `Full (strict)`。
-3. 安装 Docker Engine 和 Docker Compose Plugin。
+3. 安装 Docker：`curl -fsSL https://get.docker.com | sh`。
 4. 解压部署包，将原业务数据库备份放到 `database/init/00_legacy.sql.gz`。
 5. 执行 `cp .env.example .env`，填写数据库密码、腾讯 IM 密钥、回调 Token 和管理员 ID。
 
 ## 一键部署
 
 ```bash
+unzip YCH-IM-deploy.zip
+cd YCH-IM-deploy
 chmod +x starh.sh
 ./starh.sh
 ```
